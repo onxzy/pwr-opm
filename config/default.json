@@ -1,0 +1,66 @@
+{
+  "problem": {
+    "fitness": {
+      "global": {
+        "flat": {
+          "penalty": 0.0
+        },
+        "weights": {
+          "fitness": 1.0,
+          "penalty": 1.0
+        }
+      },
+      "fitness": {
+        "reviews": {
+          "minReviews": 10,
+          "maxReviews": 2000
+        },
+        "weights": {
+          "price": 1.0,
+          "reviews": 1.0
+        }
+      },
+      "penalty": {
+        "enable": true,
+        "bonus": true,
+        "flat": {
+          "unique": 5000,
+          "breakfast": 500,
+          "lunch": 500,
+          "dinner": 500,
+          "bar": 500
+        },
+        "weights": {
+          "placesOpen": 1.0,
+          "totalDuration": 1.0,
+          "maxPrice": 1.0,
+          "breakfastStart": 1.0,
+          "breakfastEnd": 1.0,
+          "lunchStart": 1.0,
+          "lunchEnd": 1.0,
+          "dinnerStart": 1.0,
+          "dinnerEnd": 1.0,
+          "barStart": 1.0
+        }
+      }
+    }
+  },
+
+  "optimizer": {
+    "ga": {
+      "populationSize": 10,
+      "generations": 1000,
+      "selection": {
+        "tournament": {
+          "size": 3
+        }
+      },
+      "crossover": {
+        "probability": 0.4
+      },
+      "mutation": {
+        "probability": 0.1
+      }
+    }
+  } 
+}
