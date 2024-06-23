@@ -23,6 +23,7 @@ using namespace utils;
 using namespace problem;
 
 #include "optimizer/GA.h"
+#include "optimizer/Random.h"
 using namespace optimizer;
 
 void onterminate() {
@@ -50,6 +51,7 @@ int main(int argc, char *argv[]) {
     ("config", po::value<std::string>()->default_value((std::string) "config/default.json"), "config file")
     ("input", po::value<std::string>()->required(), "output folder")
     ("max-problem-nb", po::value<int>()->default_value(-1), "number of problems to load")
+    ("optimizer,o", po::value<std::string>()->default_value((std::string) "random"), "random, ga")
   ;
 
   po::variables_map vm;
@@ -73,13 +75,53 @@ int main(int argc, char *argv[]) {
 
   std::default_random_engine e(seed);
 
-  ga::selection::Selection * selection = new ga::selection::TournamentSelection(&config, &e);
-  ga::crossover::Crossover * crossover = new ga::crossover::SinglePointCrossover(&config, &e);
-  ga::mutation::Mutation * mutation = new ga::mutation::SwapMutation(&config, &e);
+  // Solution * solution = Solution::random(&problems.back(), &e);
+  // SolutionFitness fitness = solution->computeFitness(&config.problem.fitness);
+  // std::cout << solution->toString() << std::endl;
+  // std::cout << "===================================================" << std::endl;
+  // std::cout << "Global :" << fitness.global << std::endl;
+  // std::cout << "Fitness :" << fitness.fitness << std::endl;
+  // std::cout << "Compliant" << std::endl;
+  // std::cout << fitness.compliant.toString() << std::endl;
 
-  Optimizer * optimizer = new ga::GA(&config, &problems.back(), &e, selection, crossover, mutation);
+  // return 0;
 
-  optimizer->run();
+  Optimizer * optimizer = nullptr;
+
+  std::string optimizerName = vm["optimizer"].as<std::string>();
+
+  if (optimizerName == "random") {
+    optimizer = new random::Random(&config, &problems.back(), &e);
+  } else if (optimizerName == "ga") {
+    ga::selection::Selection * selection = new ga::selection::TournamentSelection(&config, &e);
+    ga::crossover::Crossover * crossover = new ga::crossover::SinglePointCrossover(&config, &e);
+    ga::mutation::Mutation * mutation = new ga::mutation::SwapMutation(&config, &e);
+
+    optimizer = new ga::GA(&config, &problems.back(), &e, selection, crossover, mutation);
+  } else {
+    std::cerr << "Optimizer " << optimizerName << " unknown" << std::endl;
+    return 1;
+  }
+
+  Solution * best = optimizer->run();
+  std::cout << "===================================================" << std::endl;
+  std::cout << optimizer->getStats()->dumpCsv() << std::endl;
+  std::cout << "===================================================" << std::endl;
+
+  if (best == nullptr) {
+    std::cerr << "No solution found" << std::endl;
+    return 1;
+  }
+  SolutionFitness bestFitness = best->computeFitness(&config.problem.fitness);
+
+  std::cout << "===================================================" << std::endl;
+  std::cout << best->toString() << std::endl;
+  std::cout << "===================================================" << std::endl;
+  std::cout << "Global : " << bestFitness.global << std::endl;
+  std::cout << "Fitness : " << bestFitness.fitness << std::endl;
+  std::cout << "Penalty : " << bestFitness.penalty << std::endl;
+  std::cout << "Compliant : " << std::to_string(bestFitness.compliant.summary()) << std::endl;
+  std::cout << bestFitness.compliant.toString() << std::endl;
 
   return 0;
 }

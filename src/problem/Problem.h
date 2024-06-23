@@ -66,6 +66,7 @@ namespace problem {
       static void generateBulk(std::string outputFolder, int length, int nbPlaces, int citySize, int startSeed = 1);
       static std::vector<Problem> loadBulk(std::string folder, int nbToLoad = -1);
 
+      static std::vector<models::Place *> findPlacesByType(std::vector<models::Place *> * places, models::PlaceType type, std::set<models::Place*> exclude = std::set<models::Place*>());
       std::vector<models::Place *> findPlacesByType(models::PlaceType type, std::set<models::Place*> exclude = std::set<models::Place*>());
       int getTravelTime(models::Location * locationA, models::Location * locationB);
   };

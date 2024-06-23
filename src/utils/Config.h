@@ -155,11 +155,19 @@ namespace optimizer {
     };
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(GAConfig, populationSize, generations, selection, crossover, mutation)
   }
+
+  namespace random {
+    struct RandomConfig {
+      int populationSize = 10000;
+    };
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(RandomConfig, populationSize)
+  }
   
   struct OptimizerConfig {
     ga::GAConfig ga;
+    random::RandomConfig random;
   };
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(OptimizerConfig, ga)
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(OptimizerConfig, ga, random)
 }
 
 namespace utils {

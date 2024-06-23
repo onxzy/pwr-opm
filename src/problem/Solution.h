@@ -6,49 +6,9 @@
 #include "../utils/Config.h"
 #include "../models/Place.h"
 #include "Problem.h"
+#include "SolutionFitness.h"
 
 namespace problem {
-  class SolutionCompliant {
-    public:
-      int placesOpen = 0;
-      bool placesUnique = true;
-
-      int totalDuration = 0;
-      int maxPrice = 0;
-
-      bool breakfast = true;
-      int breakfastStart = 0;
-      int breakfastEnd = 0;
-
-      bool lunch = true;
-      int lunchStart = 0;
-      int lunchEnd = 0;
-
-      bool dinner = true;
-      int dinnerStart = 0;
-      int dinnerEnd = 0;
-
-      bool bar = true;
-      int barStart = 0;
-
-      bool summary();
-
-      std::string toString();
-  };
-
-
-  class SolutionFitness {
-    public:
-      SolutionCompliant compliant;
-
-      float global = 0;
-      float penalty = 0;
-      float fitness = 0;
-
-      bool operator<(const SolutionFitness& other) const;
-      bool operator>(const SolutionFitness& other) const;
-  };
-
   enum TourPlaceType {
     ATTRACTION,
     BREAKFAST,
@@ -66,13 +26,14 @@ namespace problem {
 
     public:
       std::list<models::Place*> tour;
+      // std::vector<models::Place *> tour;
 
       Solution(Problem* problem);
       static Solution * random(Problem* problem, std::default_random_engine* randomEngine);
 
       void loopTour(std::function<bool(int i, int t_before, int t_in, int t_out, models::Place * place, TourPlaceType tourPlaceType)> lambda);
-      SolutionCompliant compliant();
-      SolutionFitness fitness(config::Fitness * config);
+      SolutionFitness computeFitness(config::Fitness * config);
+      SolutionCompliant getCompliancy();
 
       std::string toString();
 
@@ -84,5 +45,7 @@ namespace problem {
 
       bool hasDuplicates();
       void removeDuplicates();
+
+      void repair(SolutionCompliant * compliant, std::default_random_engine* randomEngine);
   };
 }

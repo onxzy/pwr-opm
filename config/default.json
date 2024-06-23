@@ -7,7 +7,7 @@
         },
         "weights": {
           "fitness": 1.0,
-          "penalty": 1.0
+          "penalty": 5.0
         }
       },
       "fitness": {
@@ -22,16 +22,16 @@
       },
       "penalty": {
         "enable": true,
-        "bonus": true,
+        "bonus": false,
         "flat": {
-          "unique": 5000,
-          "breakfast": 500,
-          "lunch": 500,
-          "dinner": 500,
-          "bar": 500
+          "unique": -5000,
+          "breakfast": -500,
+          "lunch": -500,
+          "dinner": -500,
+          "bar": -500
         },
         "weights": {
-          "placesOpen": 1.0,
+          "placesOpen": 10.0,
           "totalDuration": 1.0,
           "maxPrice": 1.0,
           "breakfastStart": 1.0,
@@ -47,9 +47,12 @@
   },
 
   "optimizer": {
+    "random": {
+      "populationSize": 1000000
+    },
     "ga": {
-      "populationSize": 10,
-      "generations": 1000,
+      "populationSize": 10000,
+      "generations": 100,
       "selection": {
         "tournament": {
           "size": 3

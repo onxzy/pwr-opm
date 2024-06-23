@@ -135,205 +135,11 @@ namespace problem {
     return result;
   }
 
-  SolutionFitness Solution::fitness(config::Fitness * config) {
-    SolutionFitness fitness = SolutionFitness();
-    SolutionCompliant compliant = this->compliant();
-    bool isCompliant = compliant.summary();
-    fitness.compliant = compliant;
-
-    fitness.fitness += this->reviews(config) * config->fitness.weights.reviews;
-    fitness.fitness += this->totalPrice() * config->fitness.weights.price;
-
-    if (config->penalty.enable && !isCompliant) {
-      fitness.penalty += compliant.placesOpen * config->penalty.weights.placesOpen;
-      fitness.penalty += compliant.maxPrice * config->penalty.weights.maxPrice;
-      fitness.penalty += compliant.totalDuration * config->penalty.weights.totalDuration;
-
-      fitness.penalty += compliant.placesUnique ? 0 : config->penalty.flat.unique;
-      fitness.penalty += compliant.breakfast ? 0 : config->penalty.flat.breakfast;
-      fitness.penalty += compliant.lunch ? 0 : config->penalty.flat.lunch;
-      fitness.penalty += compliant.dinner ? 0 : config->penalty.flat.dinner;
-      fitness.penalty += compliant.bar ? 0 : config->penalty.flat.bar;
-
-      if (config->penalty.bonus) {
-        fitness.penalty += compliant.breakfastStart * config->penalty.weights.breakfastStart;
-        fitness.penalty += compliant.breakfastEnd * config->penalty.weights.breakfastEnd;
-        
-        fitness.penalty += compliant.lunchStart * config->penalty.weights.lunchStart;
-        fitness.penalty += compliant.lunchEnd * config->penalty.weights.lunchEnd;
- 
-        fitness.penalty += compliant.dinnerStart * config->penalty.weights.dinnerStart;
-        fitness.penalty += compliant.dinnerEnd * config->penalty.weights.dinnerEnd;
-
-        fitness.penalty += compliant.barStart * config->penalty.weights.barStart;
-      } else {
-        fitness.penalty += compliant.breakfastStart >= 0 ? 0 : compliant.breakfastStart * config->penalty.weights.breakfastStart;
-        fitness.penalty += compliant.breakfastEnd >= 0 ? 0 : compliant.breakfastEnd * config->penalty.weights.breakfastEnd;
-        
-        fitness.penalty += compliant.lunchStart >= 0 ? 0 : compliant.lunchStart * config->penalty.weights.lunchStart;
-        fitness.penalty += compliant.lunchEnd >= 0 ? 0 : compliant.lunchEnd * config->penalty.weights.lunchEnd;
-
-        fitness.penalty += compliant.dinnerStart >= 0 ? 0 : compliant.dinnerStart * config->penalty.weights.dinnerStart;
-        fitness.penalty += compliant.dinnerEnd >= 0 ? 0 : compliant.dinnerEnd * config->penalty.weights.dinnerEnd;
-
-        fitness.penalty += compliant.barStart >= 0 ? 0 : compliant.barStart * config->penalty.weights.barStart;
-      }
-    }
-
-    fitness.global = fitness.fitness
-      + ( 
-        config->penalty.enable && !isCompliant
-        ? (fitness.penalty + config->global.flat.penalty) * config->global.weights.penalty
-        : 0
-      );
-
-    return fitness;
-  }
-
-  bool SolutionFitness::operator<(const SolutionFitness& other) const {
-    return this->global < other.global;
-  }
-
-  bool SolutionFitness::operator>(const SolutionFitness& other) const {
-    return this->global > other.global;
-  }
-
-  SolutionCompliant Solution::compliant() {
-    SolutionCompliant * result = new SolutionCompliant();
-    problem::Constraints * constraints = this->problem->constraints;
-
-    result->placesUnique = this->hasDuplicates();
-
-    result->breakfast = !constraints->breakfast;
-    result->lunch = !constraints->lunch;
-    result->dinner = !constraints->dinner;
-    result->bar = !constraints->bar;
-
-    int t_finish = 0;
-
-    auto loopFunction = [&](int i, int t_before, int t_in, int t_out, models::Place * place, TourPlaceType tourPlaceType) {
-      switch (tourPlaceType) {
-        case TourPlaceType::BREAKFAST:
-          if (constraints->breakfast) {
-            result->breakfast = true;
-            result->breakfastStart = t_in - constraints->breakfastStart;
-            result->breakfastEnd = constraints->breakfastEnd - t_out;
-          }
-          break;
-
-        case TourPlaceType::LUNCH:
-          if (constraints->lunch) {
-            result->lunch = true;
-            result->lunchStart = t_in - constraints->lunchStart;
-            result->lunchEnd = constraints->lunchEnd - t_out;
-          }
-          break;
-
-        case TourPlaceType::DINNER:
-          if (constraints->dinner) {
-            result->dinner = true;
-            result->dinnerStart = t_in - constraints->dinnerStart;
-            result->dinnerEnd = constraints->dinnerEnd - t_out;
-          }
-          break;
-
-        case TourPlaceType::BAR:
-          if (constraints->bar) {
-            result->bar = true;
-            result->barStart = t_in - constraints->barStart;
-          }
-          /* code */
-          break;
-      }
-
-      if (t_in < place->open) {
-        result->placesOpen -= place->open - t_in;
-      }
-
-      if (t_out > place->close) {
-        result->placesOpen -= t_out - place->close;
-      }
-      
-      t_finish = t_out;
-
-      return false;
-    };
-
-    this->loopTour(loopFunction);
-
-    result->totalDuration = constraints->totalDuration - this->totalTime();
-    result->maxPrice = constraints->maxPrice > 0 ? constraints->maxPrice - this->totalPrice()  : 0;
-
-    return *result;
-  }
-
-  bool SolutionCompliant::summary() {
-    return
-      this->placesOpen >= 0 &&
-      this->totalDuration >= 0 &&
-      this->maxPrice >= 0 &&
-      this->breakfast &&
-      this->breakfastStart >= 0 &&
-      this->breakfastEnd >= 0 &&
-      this->lunch &&
-      this->lunchStart >= 0 &&
-      this->lunchEnd >= 0 &&
-      this->dinner &&
-      this->dinnerStart >= 0 &&
-      this->dinnerEnd >= 0 &&
-      this->bar &&
-      this->barStart >= 0;
-  }
-
-  std::string SolutionCompliant::toString() {
-    std::string result = "";
-
-    result += this->placesOpen >= 0 ? "Places Open OK " : "Places Open NOK ";
-    result += std::to_string(this->placesOpen) + "\n";
-
-    result += this->totalDuration >= 0 ? "Total Duration OK " : "Total Duration NOK ";
-    result += std::to_string(this->totalDuration) + "\n";
-    result += this->maxPrice >= 0 ? "Max Price OK " : "Max Price NOK ";
-    result += std::to_string(this->maxPrice) + "\n";
-
-    result += this->breakfast ? "Breakfast OK\n" : "Breakfast NOK\n";
-    result += this->breakfastStart >= 0 ? "Breakfast start OK " : "Breakfast start NOK ";
-    result += std::to_string(this->breakfastStart) + "\n";
-    result += this->breakfastEnd >= 0 ? "Breakfast end OK " : "Breakfast end NOK ";
-    result += std::to_string(this->breakfastEnd) + "\n";
-
-    result += this->lunch ? "Lunch OK\n" : "Lunch NOK\n";
-    result += this->lunchStart >= 0 ? "Lunch start OK " : "Lunch start NOK ";
-    result += std::to_string(this->lunchStart) + "\n";
-    result += this->lunchEnd >= 0 ? "Lunch end OK " : "Lunch end NOK ";
-    result += std::to_string(this->lunchEnd) + "\n";
-
-    result += this->dinner ? "Dinner OK\n" : "Dinner NOK\n";
-    result += this->dinnerStart >= 0 ? "Dinner start OK " : "Dinner start NOK ";
-    result += std::to_string(this->dinnerStart) + "\n";
-    result += this->dinnerEnd >= 0 ? "Dinner end OK " : "Dinner end NOK ";
-    result += std::to_string(this->dinnerEnd) + "\n";
-
-    result += this->bar ? "Bar OK\n" : "Bar NOK\n";
-    result += this->barStart >= 0 ? "Bar start OK " : "Bar start NOK ";
-    result += std::to_string(this->barStart) + "\n";
-
-    return result;
-  }
-
   models::Place* Solution::pickPlace(int * t, std::vector<models::Place *>* places, int overrideDuration) {
 
     models::Place * foundPlace = nullptr;
 
     for (auto it = places->begin(); it != places->end(); ++it) {
-
-      // std::cout << (*it)->name << ": " << this->currentTravelTimeToPlace(*it);
-      // std::cout << " " << std::to_string((overrideDuration > 0) ? overrideDuration : (*it)->timeToVisit);
-      // std::cout << " (" << overrideDuration;
-      // std::cout << "-" << (*it)->timeToVisit;
-      // std::cout << ")";
-      // std::cout << " " << (*it)->close;
-      // std::cout << std::endl;
 
       int t_in = *t + this->currentTravelTimeToPlace(*it);
       int t_out = t_in + (((bool) overrideDuration) ? overrideDuration : (*it)->timeToVisit);
@@ -520,7 +326,7 @@ namespace problem {
   bool Solution::hasDuplicates() {
     std::unordered_set<models::Place *> set;
 
-    for (auto it = this->tour.begin(); it!= this->tour.end(); ++it) {
+    for (auto it = this->tour.begin(); it != this->tour.end(); ++it) {
       set.insert(*it);
     }
 
@@ -528,14 +334,144 @@ namespace problem {
   }
 
   void Solution::removeDuplicates() {
-    std::set<models::Place *> set;
-    for (auto it = this->tour.begin(); it!= this->tour.end(); ++it) {
-      set.insert(*it);
+    std::unordered_set<models::Place *> set;
+    for (auto it = this->tour.begin(); it != this->tour.end(); ) {
+      auto element = *it;
+      if (set.find(*it) != set.end()) {
+        set.insert(element);
+        it = this->tour.erase(it);
+      } else {
+        set.insert(element);
+        ++it;
+      } 
+    }
+  }
+
+  void Solution::repair(SolutionCompliant * compliant, std::default_random_engine* randomEngine) {
+    this->removeDuplicates();
+
+    std::vector<models::Place *> tourVector;
+    for (auto it = this->tour.begin(); it != this->tour.end(); ++it) {
+      tourVector.push_back(*it);
     }
 
+    std::vector<models::Place *> solutionAttractions = Problem::findPlacesByType(&tourVector, models::PlaceType::attraction);
+    std::vector<models::Place *> solutionRestaurants = Problem::findPlacesByType(&tourVector, models::PlaceType::restaurant);
+    std::vector<models::Place *> solutionBars = Problem::findPlacesByType(&tourVector, models::PlaceType::bar);
+    std::vector<models::Place *> solutionCafes = Problem::findPlacesByType(&tourVector, models::PlaceType::bar);
+
+    std::set<models::Place *> solutionAttractionsSet(solutionAttractions.begin(), solutionAttractions.end());
+    std::set<models::Place *> solutionRestaurantsSet(solutionRestaurants.begin(), solutionRestaurants.end());
+    std::set<models::Place *> solutionBarsSet(solutionBars.begin(), solutionBars.end());
+    std::set<models::Place *> solutionCafesSet(solutionCafes.begin(), solutionCafes.end());
+
+    std::vector<models::Place *> remainingAttractions = problem->findPlacesByType(models::PlaceType::attraction, solutionAttractionsSet);
+    std::vector<models::Place *> remainingRestaurants = problem->findPlacesByType(models::PlaceType::restaurant, solutionRestaurantsSet);
+    std::vector<models::Place *> remainingBars = problem->findPlacesByType(models::PlaceType::bar, solutionBarsSet);
+    std::vector<models::Place *> remainingCafes = problem->findPlacesByType(models::PlaceType::cafe, solutionCafesSet);
+
+    std::shuffle(remainingAttractions.begin(), remainingAttractions.end(), *randomEngine);
+    std::shuffle(remainingRestaurants.begin(), remainingRestaurants.end(), *randomEngine);
+    std::shuffle(remainingBars.begin(), remainingBars.end(), *randomEngine);
+    std::shuffle(remainingCafes.begin(), remainingCafes.end(), *randomEngine);
+
+    bool breakfastFixed = false;
+    bool lunchFixed = false;
+    bool dinnerFixed = false;
+    bool barFixed = false;
+
+    bool breakfastDone = false;
+    bool lunchDone = false;
+    bool dinnerDone = false;
+    bool barDone = false;
+
+    models::Place * breakfast = nullptr;
+    models::Place * lunch = nullptr;
+    models::Place * dinner = nullptr;
+    models::Place * bar = nullptr;
+
     this->tour.clear();
-    for (auto it = set.begin(); it != set.end(); ++it) {
-      this->tour.push_back(*it);
+
+    const int t_start = problem->constraints->startTime;
+    int t = t_start;
+
+    int it_counter = 0;
+
+    while (t < t_start + problem->constraints->totalDuration) {
+      it_counter++;
+
+      // Find Breakfast
+      if (problem->constraints->breakfast &&
+          problem->constraints->breakfastStart <= t && // t <= problem->constraints->breakfastEnd &&
+          breakfast == nullptr &&
+          (solutionCafes.size() + remainingCafes.size() > 0)) {
+
+        // PRINTLN("Breakfast");
+        
+        if (solutionCafes.size()) breakfast = this->pickPlace(&t, &solutionCafes, problem->constraints->breakfastDuration);
+        if (breakfast == nullptr) breakfast = this->pickPlace(&t, &remainingCafes, problem->constraints->breakfastDuration);
+
+        if (breakfast != nullptr) continue;
+      }
+
+      // Find Lunch
+      if (problem->constraints->lunch &&
+          problem->constraints->lunchStart <= t && // t <= problem->constraints->lunchEnd &&
+          lunch == nullptr &&
+          (solutionRestaurants.size() + remainingRestaurants.size() > 0)) {
+
+        // PRINTLN("Lunch");
+
+        if (solutionRestaurants.size()) lunch = this->pickPlace(&t, &solutionRestaurants, problem->constraints->lunchDuration);
+        if (lunch == nullptr) lunch = this->pickPlace(&t, &remainingRestaurants, problem->constraints->lunchDuration);
+
+        if (lunch != nullptr) continue;
+      }
+
+      // Find Dinner
+      if (problem->constraints->dinner &&
+          problem->constraints->dinnerStart <= t && // t <= problem->constraints->dinnerEnd &&
+          dinner == nullptr &&
+          (solutionRestaurants.size() + remainingRestaurants.size() > 0)) {
+
+        // PRINTLN("Dinner");
+
+        if (solutionRestaurants.size()) dinner = this->pickPlace(&t, &solutionRestaurants, problem->constraints->dinnerDuration);
+        if (dinner == nullptr) dinner = this->pickPlace(&t, &remainingRestaurants, problem->constraints->dinnerDuration);
+ 
+        if (dinner != nullptr) continue;
+      }
+
+      // Find Bar
+      if (problem->constraints->bar &&
+          problem->constraints->barStart <= t &&
+          bar == nullptr &&
+          (solutionBars.size() + remainingBars.size() > 0)) {
+
+        // PRINTLN("Bar");
+
+        if (solutionBars.size()) bar = this->pickPlace(&t, &solutionBars, problem->constraints->barDuration);
+        if (bar == nullptr) bar = this->pickPlace(&t, &remainingBars, problem->constraints->barDuration);
+
+        if (bar != nullptr) continue;
+      }
+
+      // Stop looking for new places when we are at the bar = end of tour
+      if (problem->constraints->bar && bar != nullptr) break;
+
+      // Find attraction
+      if (solutionAttractions.size() + remainingAttractions.size() > 0) {
+
+        models::Place * foundAttraction = nullptr;
+        if (solutionAttractions.size()) foundAttraction = this->pickPlace(&t, &solutionAttractions);
+        if (foundAttraction == nullptr) foundAttraction = this->pickPlace(&t, &remainingAttractions);
+
+        if (foundAttraction != nullptr) continue;
+      }
+      
+      // By default advance by 10 minutes
+      t += 10;
+      // PRINTLN("Default");
     }
   }
 }

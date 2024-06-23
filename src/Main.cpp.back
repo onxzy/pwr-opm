@@ -1,0 +1,220 @@
+#include "Defaults.h"
+
+#include <iostream>
+#include <exception>
+#include <string>
+#include <ctime>
+
+#include <boost/program_options.hpp>
+#include <boost/numeric/ublas/symmetric.hpp>
+#include <boost/numeric/ublas/io.hpp>
+using namespace boost::numeric::ublas;
+namespace po = boost::program_options;
+
+#include "lib/json.hpp"
+using json = nlohmann::json;
+
+#include "models/Place.h"
+#include "models/Problem.h"
+#include "models/Solution.h"
+#include "utils/Stats.h"
+using namespace map;
+using namespace place;
+using namespace problem;
+using namespace utils;
+
+void onterminate() {
+  try {
+    auto unknown = std::current_exception();
+    if (unknown) {
+      std::rethrow_exception(unknown);
+    } else {
+      std::cerr << "normal termination" << std::endl;
+    }
+  } catch (const std::exception& e) { // for proper `std::` exceptions
+    std::cerr << "unexpected exception: " << e.what() << std::endl;
+  } catch (...) { // last resort for things like `throw 1;`
+    std::cerr << "unknown exception" << std::endl;
+  }
+}
+
+int main(int argc, char *argv[]) {
+  std::set_terminate(onterminate);
+
+  po::options_description generic_options("");
+  generic_options.add_options()
+    ("command", po::value<std::string>())
+    ("subargs", po::value<std::vector<std::string>>());
+  ;
+
+  po::options_description global_options("global options");
+  global_options.add_options()
+    ("help,h", "display help")
+    ("seed,s", po::value<int>(), "random engine seed")
+    ("config,c", po::value<std::string>()->default_value((std::string) "config/default.json"), "config file")
+  ;
+
+  po::positional_options_description pos;
+  pos.add("command", 1).add("subargs", -1);
+
+  po::variables_map vm;
+  po::parsed_options parsed = po::command_line_parser(argc, argv)
+    .options(generic_options)
+    .positional(pos)
+    .options(global_options)
+    .allow_unregistered()
+    .run();
+  po::store(parsed, vm);
+
+  if (vm.count("help") || !vm.count("command")) {
+    std::cout << global_options << std::endl;
+  }
+
+  int seed = vm.count("seed") ? vm["seed"].as<int>() : (int) std::time(nullptr);
+  config::Config config = Problem::loadConfig(vm["config"].as<std::string>());
+
+  std::string cmd = vm["command"].as<std::string>();
+
+  if (cmd == "generate") {
+
+    po::options_description generate_options("generate options");
+    generate_options.add_options()
+        ("number,n", po::value<int>()->default_value(10), "Number of problems to generate")
+        ("places,p", po::value<int>()->default_value(100), "Number of places to generate")
+        ("city-size,c", po::value<int>()->default_value(500), "Size of the city");
+
+    std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
+    opts.erase(opts.begin());
+
+    po::store(po::command_line_parser(opts).options(generate_options).run(), vm);
+
+    if (vm.count("help")) {
+      std::cout << generate_options << std::endl;
+      return 0;
+    }
+
+    Problem::generateBulk(&config, vm["number"].as<int>(), vm["places"].as<int>(), vm["city-size"].as<int>(), seed);
+
+    return 0;
+  } else {
+
+    std::cerr << "unknown command: " << cmd << std::endl;
+    return 1;
+  }
+
+  return 1;
+
+  // Problem problem = Problem::generate(100, 5000, (int) std::time(nullptr));
+
+  // config::Config config = Problem::loadConfig("config/default.json");
+
+  // Problem problem = Problem::generate(&config, 100, 5000, 1);
+
+  // problem.dump("output/p1.json");
+
+  // // Problem problem = Problem::load("output/p1.json");
+
+  // PRINTLN(problem.constraints->to_json().dump(2));
+
+  // PRINTLN("================================");
+
+  // std::default_random_engine e(1);
+
+  // int nb_sol = 100000;
+
+  // // stats table of SolutionFitness
+  // std::vector<SolutionFitness> fitness;
+
+  // for (int i = 0; i < nb_sol; i++) {
+  //   Solution solution = Solution::random(&problem, &e);
+  //   fitness.push_back(solution.fitness());
+  // }
+
+  // Stats::printStats(fitness);
+
+ 
+  // Problem::generateBulk(10, 10, 5000, 1);
+
+  // std::vector<Problem> problems = Problem::loadBulk("problems/10/5000");
+
+  // std::cout << problems[9].to_json() << std::endl;
+  
+  // Place myHostel = Place("0", "Palace Hotel", PlaceType::standard, 4.8f, 1000, Location(2, 0, 0), 0, 0);
+
+  // Place louvre =  Place("0", "Louvre", PlaceType::attraction, 4.5, 1000, Location(0, 0, 0), 180, 0);
+  // Place concorde = Place("0", "La Concorde", PlaceType::attraction, 4.8, 1000, Location(1, 0, 0), 180, 0);
+
+  // std::vector<Place*> places;
+  // places.push_back(&louvre);
+  // places.push_back(&concorde);
+
+  // int nbLocations = 3;
+  // for (auto &place : places) {
+  //   if (place->type == PlaceType::path) nbLocations += 2;
+  //   else nbLocations += 1;
+  // }
+
+  // Place *places[] = {
+  //   &louvre,
+  //   &concorde,
+  //   &champs
+  // };
+
+  
+
+  // cout << (*solution.tour.begin()) << endl;
+
+  // (*solution.tour.begin())->name = "Le Louvre";
+  // cout << (*solution.tour.begin())->name << endl;
+  // cout << louvre.name << endl;
+
+  // &(solution.tour.begin()).name = "Le Louvre";
+
+  // symmetric_matrix<int> placesTravelTimes(nbLocations, nbLocations);
+  // for (int i = 0; i < placesTravelTimes.size1(); ++ i)
+  //   for (int j = 0; j <= i; ++ j)
+  //     placesTravelTimes(i, j) = 0;
+
+  // placesTravelTimes(0, 1) = 20;
+
+  // placesTravelTimes(0, 2) = 30;
+  // // placesTravelTimes (0, 3) = 90;
+
+  // placesTravelTimes(1, 2) = 10;
+  // placesTravelTimes (1, 3) = 70;
+
+  // placesTravelTimes (2, 3) = 60;
+
+  // std::cout << placesTravelTimes << std::endl;
+
+  // Constraints constraints = Constraints(&myHostel.locationA, nullptr);
+  // Problem problem = Problem(&constraints, places, placesTravelTimes);
+
+  // std::cout << problem.to_json().dump(2) << std::endl;
+  // problem.dump("p1.json");
+
+
+  // Problem pbm_imported = Problem::load("p1.json");
+  // std::cout << "Imported" << std::endl;
+  // std::cout << pbm_imported.to_json().dump(2) << std::endl;
+
+  // std::vector<Place*> attractions = problem.findPlacesByType(PlaceType::standard);
+  // std::cout << attractions.size() << std::endl;
+  // for (auto it = attractions.begin(); it != attractions.end(); ++it) {
+  //     std::cout << (*it)->name << " ";
+  // }
+  // std::cout << std::endl;
+
+  // Solution solution = Solution(&problem);
+  // for (auto &place : places) {
+  //   solution.tour.push_back(place);
+  // }
+
+
+
+  // std::cout << solution.travelTime() << std::endl;
+  // std::cout << solution.totalTime() << std::endl;
+  // std::cout << "end" << std::endl;
+
+  return 0;
+}

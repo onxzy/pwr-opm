@@ -60,7 +60,7 @@ namespace optimizer::ga {
     class Mutation {
       public:
         Mutation(utils::Config * config, std::default_random_engine * e);
-        virtual problem::Solution * run(problem::Solution * solution) = 0;
+        virtual void run(problem::Solution * solution) = 0;
 
       protected:
         utils::Config * config;
@@ -70,14 +70,14 @@ namespace optimizer::ga {
     class SwapMutation : public Mutation {
       public:
         SwapMutation(utils::Config * config, std::default_random_engine * e);
-        problem::Solution * run(problem::Solution * solution);
+        void run(problem::Solution * solution);
     };
   }
 
   class GA: public Optimizer {
     public:
       GA(utils::Config * config, problem::Problem * problem, std::default_random_engine * e, selection::Selection * seclection, crossover::Crossover * crossover, mutation::Mutation * mutation);
-      void run();
+      problem::Solution * run();
 
     private:
       std::default_random_engine * e;
@@ -91,6 +91,7 @@ namespace optimizer::ga {
       FitnessMap * fitnessMap;
 
       void initPopulation();
+      void iteration();
   };
 }
 

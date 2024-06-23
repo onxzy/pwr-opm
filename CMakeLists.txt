@@ -45,12 +45,18 @@ add_library(
   problem STATIC
   src/problem/Problem.cpp
   src/problem/Solution.cpp
+  src/problem/SolutionFitness.cpp
 )
 
 add_library(
   optimizer STATIC
   src/optimizer/Optimizer.cpp
   src/optimizer/FitnessMap.cpp
+)
+
+add_library(
+  optimizer.random STATIC
+  src/optimizer/Random.cpp
 )
 
 add_library(
@@ -66,5 +72,5 @@ target_link_libraries(Generate PRIVATE utils models problem)
 target_link_libraries(Generate LINK_PUBLIC ${Boost_LIBRARIES})
 
 add_executable(Main src/Main.cpp)
-target_link_libraries(Main PRIVATE utils models problem optimizer optimizer.ga)
+target_link_libraries(Main PRIVATE utils models problem optimizer optimizer.ga optimizer.random)
 target_link_libraries(Main LINK_PUBLIC ${Boost_LIBRARIES})

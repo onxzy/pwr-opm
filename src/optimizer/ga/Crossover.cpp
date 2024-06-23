@@ -13,19 +13,28 @@ namespace optimizer::ga::crossover {
   SinglePointCrossover::SinglePointCrossover(utils::Config *config, std::default_random_engine * e) : Crossover(config, e) {}
 
   std::vector<problem::Solution *> SinglePointCrossover::run(problem::Solution *parentA, problem::Solution *parentB) {
-    std::uniform_int_distribution<int> distribA(0, parentA->tour.size() - 1);
-    std::uniform_int_distribution<int> distribB(0, parentB->tour.size() - 1);
-    int crossoverPointA = distribA(*this->e);
-    int crossoverPointB = distribB(*this->e);
+    if (std::uniform_real_distribution<float>(0, 1)(*this->e) > this->config->optimizer.ga.crossover.probability) {
+      return {parentA, parentB};
+    }
+
+    int crossoverPointA = std::uniform_int_distribution<int>(0, parentA->tour.size() - 1)(*this->e);
+    int crossoverPointB = std::uniform_int_distribution<int>(0, parentB->tour.size() - 1)(*this->e);
 
     problem::Solution * childA = new problem::Solution(*parentA);
     problem::Solution * childB = new problem::Solution(*parentB);
 
-    childA->tour.resize(crossoverPointA);
-    childA->tour.insert(childA->tour.end(), std::next(parentB->tour.begin(), crossoverPointB), parentB->tour.end());
+    std::list<models::Place *> bufferA;
+    bufferA.splice(bufferA.begin(), childA->tour, std::next(childA->tour.begin(), crossoverPointA), childA->tour.end());
+    // childA = childA[0:crossoverPointA)
+    // bufferA = childA[crossoverPointA:]
 
-    childB->tour.resize(crossoverPointB);
-    childB->tour.insert(childB->tour.end(), std::next(parentA->tour.begin(), crossoverPointA), parentA->tour.end());
+    std::list<models::Place *> bufferB;
+    bufferB.splice(bufferB.begin(), childB->tour, std::next(childB->tour.begin(), crossoverPointB), childB->tour.end());
+    // childB = childB[0:crossoverPointB)
+    // bufferB = childB[crossoverPointB:]
+
+    childA->tour.splice(childA->tour.end(), bufferB);
+    childB->tour.splice(childB->tour.end(), bufferA);
 
     return {childA, childB};
   }  

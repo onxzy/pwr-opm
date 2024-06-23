@@ -52,7 +52,8 @@ namespace problem {
 
       {"startTime", this->startTime},
       {"totalDuration", this->totalDuration},
-      {"maxPrice", this->maxPrice},
+      // {"maxPrice", this->maxPrice},
+      {"maxPrice", 0},
 
       {"breakfast", this->breakfast},
       {"breakfastStart", this->breakfastStart},
@@ -180,6 +181,8 @@ namespace problem {
     std::uniform_int_distribution<int> afternoon_opening_distrib(12*60, 16*60);
     std::uniform_int_distribution<int> afternoon_closing_distrib(16*60, 19*60);
     std::uniform_int_distribution<int> evening_closing_distrib(22*60, 26*60);
+    std::uniform_int_distribution<int> restaurant_opening_distrib(11*60, 17*60);
+    std::uniform_int_distribution<int> restaurant_closing_distrib(18*60, 21*60);
 
     std::uniform_int_distribution<int> breakfast_distrib(7*60, 10*60);
     std::uniform_int_distribution<int> lunch_distrib(12*60, 14*60);
@@ -279,8 +282,8 @@ namespace problem {
           *location,
           duration_distrib(e),
           price_distrib(e),
-          placeType == models::PlaceType::bar ? afternoon_opening_distrib(e) : morning_opening_distrib(e),
-          placeType == models::PlaceType::bar ? evening_closing_distrib(e) : afternoon_closing_distrib(e)
+          placeType == models::PlaceType::restaurant ? restaurant_opening_distrib(e) : placeType == models::PlaceType::bar ? afternoon_opening_distrib(e) : morning_opening_distrib(e),
+          placeType == models::PlaceType::restaurant ? restaurant_closing_distrib(e) : placeType == models::PlaceType::bar ? evening_closing_distrib(e) : afternoon_closing_distrib(e)
           ));
     }
 
@@ -331,14 +334,18 @@ namespace problem {
   }
 
   std::vector<models::Place*> Problem::findPlacesByType(models::PlaceType type, std::set<models::Place*> exclude) {
-    std::vector<models::Place*> places;
+    return Problem::findPlacesByType(&this->places, type, exclude);
+  }
 
-    for (auto it = this->places.begin(); it != this->places.end(); ++it) {
+  std::vector<models::Place*> Problem::findPlacesByType(std::vector<models::Place *> * places, models::PlaceType type, std::set<models::Place*> exclude) {
+    std::vector<models::Place*> output;
+
+    for (auto it = places->begin(); it != places->end(); ++it) {
       if (exclude.contains(*it)) continue;
-      if ((*it)->type == type) places.push_back(*it);
+      if ((*it)->type == type) output.push_back(*it);
     }
 
-    return places;
+    return output;
   }
 
   int Problem::getTravelTime(models::Location * locationA, models::Location * locationB) {

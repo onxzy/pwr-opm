@@ -3,9 +3,10 @@
     "cwd": "${workspaceFolder}",
     "args": [
       // "--config", "../config/default.json",
-      // "--output", "../problems"
+      // "--output", "problems",
       "--input", "problems/100/500",
-      "--max-problem-nb", "1"
+      "--max-problem-nb", "1",
+      "--optimizer", "ga"
     ]
   },
   "files.associations": {

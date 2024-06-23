@@ -22,33 +22,64 @@ namespace optimizer {
     }
 
     void GA::initPopulation() {
+      this->population.clear();
       for (int i = 0; i < this->config->optimizer.ga.populationSize; i++) {
         problem::Solution * solution = problem::Solution::random(this->problem, this->e);
         this->population.push_back(solution);
       }
+      this->fitnessMap->evaluatePopulation();
+      this->stats.computeStats(this->fitnessMap->getCurrentPopulationFitness());
     }
 
-    void GA::run() {
-      PRINTLN("Run GA");
+    problem::Solution * GA::run() {
+      PRINTLN("Run : GA")
 
+      this->fitnessMap->init();
       this->initPopulation();
+
+      for (int i = 0; i < this->config->optimizer.ga.generations; i++) {
+        this->iteration();
+        if (i % 10 == 0) std::cout << i << "/" << this->config->optimizer.ga.generations << std::endl;
+      }
+
+      return this->fitnessMap->getBest(true);
+    }
+
+    void GA::iteration() {
+      std::vector<problem::Solution *> newPopulation;
+
+      while ((int) newPopulation.size() < this->config->optimizer.ga.populationSize) {
+        problem::Solution * parentA = this->selection->run(&this->population);
+        problem::Solution * parentB;
+        do {
+          parentB = this->selection->run(&this->population);
+        } while (parentA == parentB);
+        std::vector<problem::Solution *> childs = this->crossover->run(parentA, parentB);
+        newPopulation.insert(newPopulation.end(), childs.begin(), childs.end());
+      }
+
+      for (int i = 0; i < (int) newPopulation.size(); i++) {
+        this->mutation->run(newPopulation[i]);
+      }
+
+      for (int i = 0; i < (int) newPopulation.size(); i++) {
+        problem::Solution * element =  newPopulation[i];
+
+        problem::SolutionCompliant compliant = element->getCompliancy();
+        element->repair(&compliant, this->e);
+
+        if (this->fitnessMap->getFitness(element, true)->compliant.totalDuration > -2*60) continue;
+
+        PRINTLN("Discard")
+        newPopulation[i] = problem::Solution::random(this->problem, this->e);
+      }
 
       this->fitnessMap->evaluatePopulation();
 
-      // problem::SolutionFitness * fitA = this->fitnessMap->getFitness(*this->population.begin());
-      // problem::Solution * sol2 = problem::Solution::random(this->problem, this->e);
-      // problem::SolutionFitness * fitB = this->fitnessMap->getFitness(sol2);
-      // problem::SolutionFitness * fitC = this->fitnessMap->getFitness(sol2);
+      this->population.clear();
+      this->population.insert(this->population.end(), newPopulation.begin(), newPopulation.end());
 
-      problem::Solution * parentA = this->selection->run(&this->population);
-      problem::Solution * parentB = parentA;
-      while (parentA == parentB) parentB = this->selection->run(&this->population);
-
-      std::vector<problem::Solution *> childs = this->crossover->run(parentA, parentB);
-
-
-      // this->crossover->run(nullptr, nullptr);
-      // this->mutation->run(nullptr);
+      this->stats.computeStats(this->fitnessMap->getCurrentPopulationFitness());
     }
   }
 }
